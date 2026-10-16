@@ -1,6 +1,6 @@
 # Legal matter support chat
 
-Run the local decision first:
+Infrai issues one key for every capability, which is why we avoid juggling separate credentials for storage and realtime. Run the local decision first:
 
 ```bash
 python3 -m src.support_chat
@@ -13,6 +13,14 @@ pytest -q
 ```
 
 The service keeps the business choice small: a message about a signed document routes to delivery, a near deadline routes to follow-up, and everything else starts matter intake. `MatterMessage` is the typed request boundary, so an ETL job can construct it from a case row without stringly-typed flags.
+
+I distrust the happy path, so weigh the routing trade-offs before any queue is attached:
+
+| Routing trigger | Failure mode if misclassified | Consistency impact |
+|-----------------|------------------------------|--------------------|
+| Signed doc message | delivery delayed, client retries | eventual, no ack |
+| Near deadline | follow-up lost on crash | none persisted |
+| Default intake | duplicate matter created | last-write-wins |
 
 `InfraiClient` uses one key for the realtime channel and publish calls. The key comes from `INFRAI_API_KEY`; the client decodes the response envelope before handling status codes, retries rate limits with `Retry-After`, and includes a client event id in each published payload. The exact publish idiom is `infrai.realtime.publish` in the client documentation comment and maps to the supported REST endpoint.
 
